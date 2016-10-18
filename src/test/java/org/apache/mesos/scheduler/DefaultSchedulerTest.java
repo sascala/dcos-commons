@@ -3,6 +3,7 @@ package org.apache.mesos.scheduler;
 import org.apache.curator.test.TestingServer;
 import org.apache.mesos.Protos;
 import org.apache.mesos.SchedulerDriver;
+import org.apache.mesos.curator.CuratorStateStore;
 import org.apache.mesos.offer.ResourceUtils;
 import org.apache.mesos.scheduler.plan.Block;
 import org.apache.mesos.scheduler.plan.Phase;
@@ -11,6 +12,7 @@ import org.apache.mesos.scheduler.plan.Status;
 import org.apache.mesos.specification.ServiceSpecification;
 import org.apache.mesos.specification.TaskSet;
 import org.apache.mesos.specification.TestTaskSetFactory;
+import org.apache.mesos.state.StateStore;
 import org.apache.mesos.testing.CuratorTestUtils;
 import org.apache.mesos.testutils.ResourceTestUtils;
 import org.apache.mesos.testutils.TestConstants;
@@ -63,6 +65,7 @@ public class DefaultSchedulerTest {
     private static TestingServer testingServer;
     private ServiceSpecification serviceSpecification;
     private DefaultScheduler defaultScheduler;
+    private StateStore stateStore;
 
     @BeforeClass
     public static void beforeAll() throws Exception {
@@ -99,9 +102,13 @@ public class DefaultSchedulerTest {
             }
         };
 
+        stateStore = new CuratorStateStore(
+                serviceSpecification.getName(),
+                testingServer.getConnectString());
         defaultScheduler = new DefaultScheduler(
                 serviceSpecification,
-                testingServer.getConnectString());
+                testingServer.getConnectString(),
+                stateStore);
         register();
     }
 
@@ -120,75 +127,19 @@ public class DefaultSchedulerTest {
 
     @Test
     public void testLaunchA() throws InterruptedException {
-        // Get first Block associated with Task A-0
+        installBlock(0, 0, getSufficientOfferForTaskA());
+
         Plan plan = defaultScheduler.getPlan();
-        Block blockTaskA0 = plan.getPhases().get(0).getBlock(0);
-        Assert.assertTrue(blockTaskA0.isPending());
-
-        // Offer sufficient Resource and wait for its acceptance
-        UUID offerId = UUID.randomUUID();
-        defaultScheduler.resourceOffers(mockSchedulerDriver, Arrays.asList(getSufficientOfferForTaskA(offerId)));
-        ArgumentCaptor<Collection> operationsCaptor = ArgumentCaptor.forClass(Collection.class);
-        verify(mockSchedulerDriver, timeout(1000).times(1)).acceptOffers(
-                (Collection<Protos.OfferID>) Matchers.argThat(contains(getOfferId(offerId))),
-                operationsCaptor.capture(),
-                any());
-
-        // Verify 2 Reserve and 1 Launch Operations were executed
-        Collection<Protos.Offer.Operation> operations = operationsCaptor.getValue();
-        Assert.assertEquals(5, operations.size());
-        Assert.assertEquals(3, countOperationType(Protos.Offer.Operation.Type.RESERVE, operations));
-        Assert.assertEquals(1, countOperationType(Protos.Offer.Operation.Type.CREATE, operations));
-        Assert.assertEquals(1, countOperationType(Protos.Offer.Operation.Type.LAUNCH, operations));
-        Awaitility.await().atMost(1, TimeUnit.SECONDS).untilCall(to(blockTaskA0).isInProgress(), equalTo(true));
-
-        // Sent TASK_RUNNING status
-        Protos.TaskID launchedTaskId = getTaskId(operations);
-        Protos.TaskStatus runningStatus = getTaskStatus(launchedTaskId, Protos.TaskState.TASK_RUNNING);
-        defaultScheduler.statusUpdate(mockSchedulerDriver, runningStatus);
-
-        // Wait for the Block to become Complete
-        Awaitility.await().atMost(1, TimeUnit.SECONDS).untilCall(to(blockTaskA0).isComplete(), equalTo(true));
         Assert.assertTrue(inExpectedState(plan, Arrays.asList(Status.COMPLETE, Status.PENDING, Status.PENDING)));
     }
 
     @Test
     public void testLaunchB() throws InterruptedException {
-        Plan plan = defaultScheduler.getPlan();
-
         // Launch A-0
         testLaunchA();
-        Block blockTaskA0 = plan.getPhases().get(0).getBlock(0);
-        Assert.assertTrue(blockTaskA0.isComplete());
+        installBlock(1, 0, getSufficientOfferForTaskB());
 
-        // Get first Block of the second Phase associated with Task B-0
-        Block blockTaskB0 = plan.getPhases().get(1).getBlock(0);
-        Assert.assertTrue(blockTaskB0.isPending());
-
-        // Offer sufficient Resource and wait for its acceptance
-        UUID offerId = UUID.randomUUID();
-        defaultScheduler.resourceOffers(mockSchedulerDriver, Arrays.asList(getSufficientOfferForTaskB(offerId)));
-        ArgumentCaptor<Collection> operationsCaptor = ArgumentCaptor.forClass(Collection.class);
-        verify(mockSchedulerDriver, timeout(1000).times(1)).acceptOffers(
-                (Collection<Protos.OfferID>) Matchers.argThat(contains(getOfferId(offerId))),
-                operationsCaptor.capture(),
-                any());
-
-        // Verify 2 Reserve and 1 Launch Operations were executed
-        Collection<Protos.Offer.Operation> operations = operationsCaptor.getValue();
-        Assert.assertEquals(5, operations.size());
-        Assert.assertEquals(3, countOperationType(Protos.Offer.Operation.Type.RESERVE, operations));
-        Assert.assertEquals(1, countOperationType(Protos.Offer.Operation.Type.CREATE, operations));
-        Assert.assertEquals(1, countOperationType(Protos.Offer.Operation.Type.LAUNCH, operations));
-        Awaitility.await().atMost(1, TimeUnit.SECONDS).untilCall(to(blockTaskB0).isInProgress(), equalTo(true));
-
-        // Sent TASK_RUNNING status
-        Protos.TaskID launchedTaskId = getTaskId(operations);
-        Protos.TaskStatus runningStatus = getTaskStatus(launchedTaskId, Protos.TaskState.TASK_RUNNING);
-        defaultScheduler.statusUpdate(mockSchedulerDriver, runningStatus);
-
-        // Wait for the Block to become Complete
-        Awaitility.await().atMost(1, TimeUnit.SECONDS).untilCall(to(blockTaskB0).isComplete(), equalTo(true));
+        Plan plan = defaultScheduler.getPlan();
         Assert.assertTrue(inExpectedState(plan, Arrays.asList(Status.COMPLETE, Status.COMPLETE, Status.PENDING)));
     }
 
@@ -384,28 +335,26 @@ public class DefaultSchedulerTest {
         Assert.assertTrue(blockTaskA0.isPending());
 
         // Offer sufficient Resource and wait for its acceptance
-        UUID offerId1 = UUID.randomUUID();
-        defaultScheduler.resourceOffers(mockSchedulerDriver, Arrays.asList(getSufficientOfferForTaskA(offerId1)));
+        Protos.Offer offer1 = getSufficientOfferForTaskA();
+        defaultScheduler.resourceOffers(mockSchedulerDriver, Arrays.asList(offer1));
         ArgumentCaptor<Collection> operationsCaptor = ArgumentCaptor.forClass(Collection.class);
         verify(mockSchedulerDriver, timeout(1000).times(1)).acceptOffers(
-            (Collection<Protos.OfferID>) Matchers.argThat(contains(getOfferId(offerId1))),
-            operationsCaptor.capture(),
-            any());
+                (Collection<Protos.OfferID>) Matchers.argThat(contains(offer1.getId())),
+                operationsCaptor.capture(),
+                any());
 
         Collection<Protos.Offer.Operation> operations = operationsCaptor.getValue();
+        Protos.TaskID launchedTaskId = getTaskId(operations);
 
         // Sent TASK_RUNNING status
-        Protos.TaskID launchedTaskId = getTaskId(operations);
-        Protos.TaskStatus runningStatus = getTaskStatus(launchedTaskId, Protos.TaskState.TASK_RUNNING);
-        defaultScheduler.statusUpdate(mockSchedulerDriver, runningStatus);
+        statusUpdate(launchedTaskId, Protos.TaskState.TASK_RUNNING);
 
         // Wait for the Block to become Complete
         Awaitility.await().atMost(1, TimeUnit.SECONDS).untilCall(to(blockTaskA0).isComplete(), equalTo(true));
         Assert.assertTrue(inExpectedState(plan, Arrays.asList(Status.COMPLETE, Status.PENDING, Status.PENDING)));
 
         // Sent TASK_KILLED status
-        runningStatus = getTaskStatus(launchedTaskId, Protos.TaskState.TASK_KILLED);
-        defaultScheduler.statusUpdate(mockSchedulerDriver, runningStatus);
+        statusUpdate(launchedTaskId, Protos.TaskState.TASK_KILLED);
 
         reset(mockSchedulerDriver);
 
@@ -416,8 +365,7 @@ public class DefaultSchedulerTest {
         Protos.Resource mem = ResourceTestUtils.getDesiredMem(1.0);
         mem = ResourceUtils.setResourceId(mem, UUID.randomUUID().toString());
 
-        UUID offerId2 = UUID.randomUUID();
-        Protos.Offer offer = Protos.Offer.newBuilder(getSufficientOfferForTaskB(offerId2))
+        Protos.Offer offer2 = Protos.Offer.newBuilder(getSufficientOfferForTaskB())
                 .addAllResources(operations.stream()
                         .filter(Protos.Offer.Operation::hasReserve)
                         .flatMap(operation -> operation.getReserve().getResourcesList().stream())
@@ -426,11 +374,24 @@ public class DefaultSchedulerTest {
                 .addResources(mem)
                 .build();
 
-        defaultScheduler.resourceOffers(mockSchedulerDriver, Arrays.asList(offer));
+        defaultScheduler.resourceOffers(mockSchedulerDriver, Arrays.asList(offer2));
         defaultScheduler.awaitTermination();
 
         // Verify scheduler accepted resources twice, once for scheduling and once for recovery.
         verify(mockSchedulerDriver, times(2)).acceptOffers(any(), any(), any());
+    }
+
+    @Test
+    public void testSuppress() {
+        install();
+    }
+
+    @Test
+    public void testRevive() {
+        List<Protos.TaskID> taskIds = install();
+        statusUpdate(taskIds.get(0), Protos.TaskState.TASK_FAILED);
+
+        Awaitility.await().atMost(1, TimeUnit.SECONDS).untilCall(to(stateStore).isSuppressed(), equalTo(false));
     }
 
     private int countOperationType(
@@ -479,7 +440,9 @@ public class DefaultSchedulerTest {
                 .build();
     }
 
-    private Protos.Offer getSufficientOfferForTaskA(UUID offerId) {
+    private Protos.Offer getSufficientOfferForTaskA() {
+        UUID offerId = UUID.randomUUID();
+
         return Protos.Offer.newBuilder()
                 .setId(Protos.OfferID.newBuilder().setValue(offerId.toString()).build())
                 .setFrameworkId(TestConstants.FRAMEWORK_ID)
@@ -493,7 +456,9 @@ public class DefaultSchedulerTest {
                 .build();
     }
 
-    private Protos.Offer getSufficientOfferForTaskB(UUID offerId) {
+    private Protos.Offer getSufficientOfferForTaskB() {
+        UUID offerId = UUID.randomUUID();
+
         return Protos.Offer.newBuilder()
                 .setId(Protos.OfferID.newBuilder().setValue(offerId.toString()).build())
                 .setFrameworkId(TestConstants.FRAMEWORK_ID)
@@ -507,19 +472,15 @@ public class DefaultSchedulerTest {
                 .build();
     }
 
-    private Protos.OfferID getOfferId(UUID id) {
-        return Protos.OfferID.newBuilder().setValue(id.toString()).build();
-    }
-
-    private boolean inExpectedState(Plan plan, List<Status> statuses) {
-        if (countBlocks(plan) != statuses.size()) {
+    private boolean inExpectedState(Plan plan, List<Status> blockStatuses) {
+        if (countBlocks(plan) != blockStatuses.size()) {
             return false;
         }
 
         int i = 0;
         for (Phase phase : plan.getPhases()) {
             for (Block block : phase.getBlocks()) {
-                switch (statuses.get(i)) {
+                switch (blockStatuses.get(i)) {
                     case PENDING:
                         if (!block.isPending()) {
                             return false;
@@ -553,5 +514,60 @@ public class DefaultSchedulerTest {
         }
 
         return i;
+    }
+
+    private Protos.TaskID installBlock(int phaseIndex, int blockIndex, Protos.Offer offer) {
+        // Get first Block associated with Task A-0
+        Plan plan = defaultScheduler.getPlan();
+        List<Protos.Offer> offers = Arrays.asList(offer);
+        Protos.OfferID offerId = offer.getId();
+        Block block = plan.getPhases().get(phaseIndex).getBlock(blockIndex);
+        Assert.assertTrue(block.isPending());
+
+        // Offer sufficient Resource and wait for its acceptance
+
+        defaultScheduler.resourceOffers(mockSchedulerDriver, offers);
+        ArgumentCaptor<Collection> operationsCaptor = ArgumentCaptor.forClass(Collection.class);
+        verify(mockSchedulerDriver, timeout(1000).times(1)).acceptOffers(
+                (Collection<Protos.OfferID>) Matchers.argThat(contains(offerId)),
+                operationsCaptor.capture(),
+                any());
+
+        // Verify 2 Reserve and 1 Launch Operations were executed
+        Collection<Protos.Offer.Operation> operations = operationsCaptor.getValue();
+        Assert.assertEquals(5, operations.size());
+        Assert.assertEquals(3, countOperationType(Protos.Offer.Operation.Type.RESERVE, operations));
+        Assert.assertEquals(1, countOperationType(Protos.Offer.Operation.Type.CREATE, operations));
+        Assert.assertEquals(1, countOperationType(Protos.Offer.Operation.Type.LAUNCH, operations));
+        Awaitility.await().atMost(1, TimeUnit.SECONDS).untilCall(to(block).isInProgress(), equalTo(true));
+
+        // Sent TASK_RUNNING status
+        Protos.TaskID taskId = getTaskId(operations);
+        statusUpdate(getTaskId(operations), Protos.TaskState.TASK_RUNNING);
+
+        // Wait for the Block to become Complete
+        Awaitility.await().atMost(1, TimeUnit.SECONDS).untilCall(to(block).isComplete(), equalTo(true));
+
+        return taskId;
+    }
+
+    private void statusUpdate(Protos.TaskID launchedTaskId, Protos.TaskState state) {
+        Protos.TaskStatus runningStatus = getTaskStatus(launchedTaskId, state);
+        defaultScheduler.statusUpdate(mockSchedulerDriver, runningStatus);
+    }
+
+    /** Installs the service. */
+    private List<Protos.TaskID> install() {
+        List<Protos.TaskID> taskIds = new ArrayList<>();
+
+        taskIds.add(installBlock(0, 0, getSufficientOfferForTaskA()));
+        taskIds.add(installBlock(1, 0, getSufficientOfferForTaskB()));
+        taskIds.add(installBlock(1, 1, getSufficientOfferForTaskB()));
+
+        Plan plan = defaultScheduler.getPlan();
+        Assert.assertTrue(inExpectedState(plan, Arrays.asList(Status.COMPLETE, Status.COMPLETE, Status.COMPLETE)));
+        Assert.assertTrue(stateStore.isSuppressed());
+
+        return taskIds;
     }
 }
