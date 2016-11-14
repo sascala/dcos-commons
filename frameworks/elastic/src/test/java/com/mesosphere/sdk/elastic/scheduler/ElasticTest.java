@@ -25,13 +25,13 @@ public class ElasticTest {
     public void before() throws Exception {
         environmentVariables.set("DNS_UTILS_URI", "https://s3-us-west-1.amazonaws.com/hello-universe-assets/dns_utils.tar.gz");
         environmentVariables.set("JAVA_URI", "https://s3-us-west-2.amazonaws.com/infinity-artifacts/kafka/jre-8u91-linux-x64.tar.gz");
-        environmentVariables.set("ELASTICSEARCH_VER_NAME", "elasticsearch-5.0.0-beta1");
-        environmentVariables.set("KIBANA_VER_NAME", "https://artifacts.elastic.co/downloads/kibana/kibana-5.0.0-beta1-linux-x86_64.tar.gz");
-        environmentVariables.set("ELASTICSEARCH_URI", "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-5.0.0-beta1.tar.gz");
-        environmentVariables.set("XPACK_URI", "https://artifacts.elastic.co/downloads/packs/x-pack/x-pack-5.0.0-beta1.zip");
-        environmentVariables.set("KIBANA_URI", "https://artifacts.elastic.co/downloads/kibana/kibana-5.0.0-beta1-linux-x86_64.tar.gz");
+        environmentVariables.set("ELASTICSEARCH_VER_NAME", "elasticsearch-5.0.0");
+        environmentVariables.set("KIBANA_VER_NAME", "https://artifacts.elastic.co/downloads/kibana/kibana-5.0.0-linux-x86_64.tar.gz");
+        environmentVariables.set("ELASTICSEARCH_URI", "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-5.0.0.tar.gz");
+        environmentVariables.set("XPACK_URI", "https://artifacts.elastic.co/downloads/packs/x-pack/x-pack-5.0.0.zip");
+        environmentVariables.set("KIBANA_URI", "https://artifacts.elastic.co/downloads/kibana/kibana-5.0.0-linux-x86_64.tar.gz");
         environmentVariables.set("DIAGNOSTICS_URI", "https://github.com/elastic/elasticsearch-support-diagnostics/releases/download/2.1.2/support-diagnostics-2.1.2-dist.zip");
-        environmentVariables.set("STATSD_PLUGIN_URI", "https://s3-us-west-1.amazonaws.com/hello-universe-assets/elasticsearch-statsd-5.0.0-beta1-SNAPSHOT.zip");
+        environmentVariables.set("STATSD_PLUGIN_URI", "https://github.com/Automattic/elasticsearch-statsd-plugin/releases/download/5.0.0.0/elasticsearch-statsd-5.0.0.0.zip");
         environmentVariables.set("ELASTICSEARCH_PLUGINS", "plugin-1, plugin-2");
         environmentVariables.set("SERVICE_NAME", "elastic-framework");
         environmentVariables.set("MESOS_FRAMEWORK_ID", "elastic-framework-id");
@@ -156,7 +156,7 @@ public class ElasticTest {
             TaskSpecification kibanaTaskSpecification = kibanaTaskSpecifications.get(0);
             Assert.assertEquals("kibana-0", kibanaTaskSpecification.getName());
             //noinspection OptionalGetWithoutIsPresent
-            Assert.assertEquals("uris { value: \"https://artifacts.elastic.co/downloads/kibana/kibana-5.0.0-beta1-linux-x86_64.tar.gz\" } uris { value: \"https://artifacts.elastic.co/downloads/packs/x-pack/x-pack-5.0.0-beta1.zip\" } environment { variables { name: \"KIBANA_ENCRYPTION_KEY\" value: \"elastic-framework-id\" } variables { name: \"KIBANA_PORT\" value: \"5601\" } variables { name: \"KIBANA_ELASTICSEARCH_URL\" value: \"http://master-0.elastic-framework.mesos:9250\" } variables { name: \"KIBANA_SERVER_NAME\" value: \"kibana-0\" } variables { name: \"KIBANA_PASSWORD\" value: \"secret\" } } value: \"$MESOS_SANDBOX/https://artifacts.elastic.co/downloads/kibana/kibana-5.0.0-beta1-linux-x86_64.tar.gz/bin/kibana-plugin install file://$MESOS_SANDBOX/x-pack-5.0.0-beta1.zip && exec $MESOS_SANDBOX/https://artifacts.elastic.co/downloads/kibana/kibana-5.0.0-beta1-linux-x86_64.tar.gz/bin/kibana -c kibana.yml\" user: \"core\"",
+            Assert.assertEquals("uris { value: \"https://artifacts.elastic.co/downloads/kibana/kibana-5.0.0-linux-x86_64.tar.gz\" } uris { value: \"https://artifacts.elastic.co/downloads/packs/x-pack/x-pack-5.0.0.zip\" } environment { variables { name: \"KIBANA_ENCRYPTION_KEY\" value: \"elastic-framework-id\" } variables { name: \"KIBANA_PORT\" value: \"5601\" } variables { name: \"KIBANA_ELASTICSEARCH_URL\" value: \"http://master-0.elastic-framework.mesos:9250\" } variables { name: \"KIBANA_SERVER_NAME\" value: \"kibana-0\" } variables { name: \"KIBANA_PASSWORD\" value: \"secret\" } } value: \"$MESOS_SANDBOX/https://artifacts.elastic.co/downloads/kibana/kibana-5.0.0-linux-x86_64.tar.gz/bin/kibana-plugin install file://$MESOS_SANDBOX/x-pack-5.0.0.zip && exec $MESOS_SANDBOX/https://artifacts.elastic.co/downloads/kibana/kibana-5.0.0-linux-x86_64.tar.gz/bin/kibana -c kibana.yml\" user: \"core\"",
                 TextFormat.shortDebugString(kibanaTaskSpecification.getCommand().get()));
 
             TaskSet masterTaskSet = elastic.getServiceSpecification().getTaskSets().get(1);

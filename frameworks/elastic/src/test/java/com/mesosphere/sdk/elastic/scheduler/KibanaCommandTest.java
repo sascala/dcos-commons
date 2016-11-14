@@ -9,14 +9,14 @@ public class KibanaCommandTest {
 
     @Before
     public void before() throws Exception {
-        kibanaCommand = new KibanaCommand("5.0.0-beta1",
-            "https://artifacts.elastic.co/downloads/packs/x-pack/x-pack-5.0.0-beta1.zip");
+        kibanaCommand = new KibanaCommand("5.0.0",
+            "https://artifacts.elastic.co/downloads/packs/x-pack/x-pack-5.0.0.zip");
     }
 
     @Test
     public void getCommandLineInvocation() throws Exception {
         String commandLineInvocation = kibanaCommand.getCommandLineInvocation();
-        Assert.assertEquals(commandLineInvocation, "$MESOS_SANDBOX/5.0.0-beta1/bin/kibana-plugin install file://$MESOS_SANDBOX/x-pack-5.0.0-beta1.zip && exec $MESOS_SANDBOX/5.0.0-beta1/bin/kibana -c kibana.yml");
+        Assert.assertEquals(commandLineInvocation, "$MESOS_SANDBOX/5.0.0/bin/kibana-plugin install file://$MESOS_SANDBOX/x-pack-5.0.0.zip && exec $MESOS_SANDBOX/5.0.0/bin/kibana -c kibana.yml");
     }
 
 }

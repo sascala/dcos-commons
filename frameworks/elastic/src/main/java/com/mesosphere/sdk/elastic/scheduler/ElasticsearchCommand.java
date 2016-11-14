@@ -47,7 +47,6 @@ class ElasticsearchCommand {
         properties.setProperty("http.port", Integer.toString(httpPort));
         properties.setProperty("transport.tcp.port", Integer.toString(transportPort));
 
-        properties.setProperty("bootstrap.ignore_system_bootstrap_checks", Boolean.toString(true));
         properties.setProperty("bootstrap.memory_lock", Boolean.toString(true));
 
         properties.setProperty("metrics.statsd.host", "$STATSD_UDP_HOST");
