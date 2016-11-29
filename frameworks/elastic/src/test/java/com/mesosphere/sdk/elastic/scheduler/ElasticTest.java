@@ -31,7 +31,6 @@ public class ElasticTest {
         environmentVariables.set("XPACK_URI", "https://artifacts.elastic.co/downloads/packs/x-pack/x-pack-5.0.0-beta1.zip");
         environmentVariables.set("KIBANA_URI", "https://artifacts.elastic.co/downloads/kibana/kibana-5.0.0-beta1-linux-x86_64.tar.gz");
         environmentVariables.set("DIAGNOSTICS_URI", "https://github.com/elastic/elasticsearch-support-diagnostics/releases/download/2.1.2/support-diagnostics-2.1.2-dist.zip");
-        environmentVariables.set("STATSD_PLUGIN_URI", "https://s3-us-west-1.amazonaws.com/hello-universe-assets/elasticsearch-statsd-5.0.0-beta1-SNAPSHOT.zip");
         environmentVariables.set("ELASTICSEARCH_PLUGINS", "plugin-1, plugin-2");
         environmentVariables.set("SERVICE_NAME", "elastic-framework");
         environmentVariables.set("MESOS_FRAMEWORK_ID", "elastic-framework-id");
@@ -74,8 +73,6 @@ public class ElasticTest {
         environmentVariables.set("KIBANA_NODE_MOUNTED_DISK", "false");
         environmentVariables.set("KIBANA_PORT", "5601");
         environmentVariables.set("KIBANA_PASSWORD", "secret");
-        environmentVariables.set("STATSD_UDP_PORT", "10001");
-        environmentVariables.set("STATSD_UDP_HOST", "udp_host");
         environmentVariables.set("EXECUTOR_URI", "https://downloads.mesosphere.com/dcos-commons/artifacts/executor.zip");
     }
 

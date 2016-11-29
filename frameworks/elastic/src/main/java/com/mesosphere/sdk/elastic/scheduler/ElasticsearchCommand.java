@@ -12,7 +12,6 @@ class ElasticsearchCommand {
     private static final int MINIMUM_MASTER_NODES = 2;
     private final String elasticsearchVerName;
     private final String xpackUri;
-    private final String statsdUri;
     private final String elasticsearchPlugins;
     private final String serviceName;
     private final int masterTransportPort;
@@ -21,11 +20,9 @@ class ElasticsearchCommand {
                          String xpackUri,
                          String elasticsearchPlugins,
                          String serviceName,
-                         int masterTransportPort,
-                         String statsdUri) {
+                         int masterTransportPort) {
         this.elasticsearchVerName = elasticsearchVerName;
         this.xpackUri = xpackUri;
-        this.statsdUri = statsdUri;
         this.elasticsearchPlugins = elasticsearchPlugins;
         this.serviceName = serviceName;
         this.masterTransportPort = masterTransportPort;
@@ -50,9 +47,6 @@ class ElasticsearchCommand {
         properties.setProperty("bootstrap.ignore_system_bootstrap_checks", Boolean.toString(true));
         properties.setProperty("bootstrap.memory_lock", Boolean.toString(true));
 
-        properties.setProperty("metrics.statsd.host", "$STATSD_UDP_HOST");
-        properties.setProperty("metrics.statsd.port", "$STATSD_UDP_PORT");
-
         properties.putAll(nodeTypePropertyOverrides(nodeName));
 
         List<String> commands = new ArrayList<>();
@@ -65,12 +59,6 @@ class ElasticsearchCommand {
             String xpackFilename = xPackPath.toString();
             String xpackFilePath = String.format("file://$MESOS_SANDBOX/%1$s", xpackFilename);
             pluginsList.add(xpackFilePath);
-        }
-        Path statsdPath = Paths.get(statsdUri).getFileName();
-        if (statsdPath != null) {
-            String statsdFilename = statsdPath.toString();
-            String statsdFilePath = String.format("file://$MESOS_SANDBOX/%1$s", statsdFilename);
-            pluginsList.add(statsdFilePath);
         }
         String userSpecifiedPlugins = elasticsearchPlugins;
         if (userSpecifiedPlugins.length() > 0) {

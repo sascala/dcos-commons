@@ -25,7 +25,6 @@ class Elastic {
     private static final int ELASTICSEARCH_GRACE_PERIOD_SECONDS = 600;
     private static final String DNS_UTILS_URI = System.getenv("DNS_UTILS_URI");
     private static final String DIAGNOSTICS_URI = System.getenv("DIAGNOSTICS_URI");
-    private static final String STATSD_PLUGIN_URI = System.getenv("STATSD_PLUGIN_URI");
     private static final String JAVA_URI = System.getenv("JAVA_URI");
     private static final String ELASTICSEARCH_URI = System.getenv("ELASTICSEARCH_URI");
     private static final String KIBANA_URI = System.getenv("KIBANA_URI");
@@ -81,7 +80,7 @@ class Elastic {
         String elasticsearchVerName = System.getenv("ELASTICSEARCH_VER_NAME");
         String elasticsearchPlugins = System.getenv("ELASTICSEARCH_PLUGINS");
         elasticsearchCommand = new ElasticsearchCommand(elasticsearchVerName, XPACK_URI,
-            elasticsearchPlugins, SERVICE_NAME, masterNodeTransportPort, STATSD_PLUGIN_URI);
+            elasticsearchPlugins, SERVICE_NAME, masterNodeTransportPort);
         String kibanaVerName = System.getenv("KIBANA_VER_NAME");
         kibanaCommand = new KibanaCommand(kibanaVerName, XPACK_URI);
         serviceSpecification = new DefaultServiceSpecification(SERVICE_NAME, createTaskSets());
@@ -217,7 +216,6 @@ class Elastic {
             .addUris(TaskUtils.uri(ELASTICSEARCH_URI))
             .addUris(TaskUtils.uri(XPACK_URI))
             .addUris(TaskUtils.uri(DIAGNOSTICS_URI))
-            .addUris(TaskUtils.uri(STATSD_PLUGIN_URI))
             .setEnvironment(TaskUtils.fromMapToEnvironment(environmentMap))
             .build();
     }
