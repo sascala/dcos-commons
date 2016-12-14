@@ -38,6 +38,7 @@ public class HelloWorldServiceSpecTest {
         environmentVariables.set("SLEEP_DURATION", "1000");
         environmentVariables.set("HELLO_COUNT", "2");
         environmentVariables.set("HELLO_PORT", "4444");
+        environmentVariables.set("HELLO_ANOTHER_PORT", "4445");
         environmentVariables.set("HELLO_VIP_NAME", "helloworld");
         environmentVariables.set("HELLO_VIP_PORT", "9999");
         environmentVariables.set("HELLO_CPUS", "0.1");

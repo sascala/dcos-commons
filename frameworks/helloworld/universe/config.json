@@ -41,6 +41,16 @@
             "type":"integer",
             "default":1
           },
+          "port":{
+            "description":"Port",
+            "type":"integer",
+            "default":9999
+          },
+          "another_port":{
+            "description":"Another Port",
+            "type":"integer",
+            "default":9990
+          },
           "constraint":{
             "description":"Marathon-style constraint for metadata nodes",
             "type":"string",
