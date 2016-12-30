@@ -1,0 +1,44 @@
+name: {{TASKCFG_ALL_SERVICE_NAME}}
+principal: "{{TASKCFG_ALL_SERVICE_NAME}}-principal"
+zookeeper: master.mesos:2181
+api-port: {{PORT0}}
+pods:
+  node:
+    count: {{NODES}}
+    user: {{SERVICE_USER}}
+    tasks:
+      server:
+        goal: RUNNING
+        cpus: {{CASSANDRA_CPUS}}
+        memory: {{CASSANDRA_MEMORY_MB}}
+        ports:
+          - name: jmx
+            port: {{TASKCFG_ALL_JMX_PORT}}
+          - name: storage
+            port: {{TASKCFG_ALL_CASSANDRA_STORAGE_PORT}}
+          - name: ssl
+            port: {{TASKCFG_ALL_CASSANDRA_SSL_STORAGE_PORT}}
+          - name: native
+            port: {{TASKCFG_ALL_CASSANDRA_NATIVE_TRANSPORT_PORT}}
+          - name: rpc
+            port: {{TASKCFG_ALL_CASSANDRA_RPC_PORT}}
+        volumes:
+          - path: "container-path"
+            type: {{CASSANDRA_DISK_TYPE}}
+            size: {{CASSANDRA_DISK_MB}}
+        cmd: "env && ./cassandra-scheduler/wait_dns.sh && exec ./apache-cassandra-{{CASSANDRA_VERSION}}/bin/cassandra -f"
+        uris:
+          - "{{SCHEDULER_URI}}"
+          - "https://downloads.mesosphere.com/cassandra/assets/apache-cassandra-{{CASSANDRA_VERSION}}-bin-dcos.tar.gz"
+        configurations:
+          - template: "{{CONFIG_TEMPLATE_PATH}}/cassandra.yaml"
+            dest: "apache-cassandra-{{CASSANDRA_VERSION}}/conf/cassandra.yaml"
+          - template: "{{CONFIG_TEMPLATE_PATH}}/jvm_{{CASSANDRA_HEAP_GC}}.options"
+            dest: "apache-cassandra-{{CASSANDRA_VERSION}}/conf/jvm.options"
+plans:
+  deploy:
+    strategy: serial
+    phases:
+      node-deploy:
+        strategy: serial
+        pod: node
