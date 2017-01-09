@@ -6,6 +6,11 @@ pods:
   hello:
     count: {{HELLO_COUNT}}
     placement: {{HELLO_PLACEMENT}}
+    container:
+      rlimits:
+        RLIMIT_NOFILE:
+          soft: 128000
+          hard: 128000
     tasks:
       server:
         goal: RUNNING
